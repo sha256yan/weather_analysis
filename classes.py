@@ -100,5 +100,5 @@ class Time(pd.Series):
             since 03-26 is 4 days after the earliest date, 03-22.
         """
         datetimes = self.apply(lambda time_string: self.datetime_from_str(time_string))
-        time_differences = [(datetime-datetimes[0]).days for datetime in datetimes]
+        time_differences = datetimes.apply(lambda dtime: (dtime - datetimes[0]).days)
         return time_differences
