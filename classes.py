@@ -75,13 +75,6 @@ class Time(pd.Series):
         seconds_after_midnight = 60 * (hour * 60  + minute)
         return seconds_after_midnight
     
-    @staticmethod
-    def datetime_from_str(time_string):
-        """
-            Takes in a string in the form "2022-03-22"
-            and returns a corresponding datetime date object
-        """
-        return date(*[int(time) for time in time_string.split("-")]) 
     
     def sec_after_midnight(self):
         """
