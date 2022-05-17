@@ -4,6 +4,7 @@ from datetime import datetime, date, time
 
 
 
+
 class Time(pd.Series):
     """
         Parent of time types
@@ -13,7 +14,12 @@ class Time(pd.Series):
         super().__init__(sorted_series)
         self.time_objects = sorted_series.apply(self.process_string)
 
+
         
+        
+        
+        
+
         
 class Hours(Time):
     """
