@@ -29,19 +29,20 @@ class Hours(Time):
         return time(hour, minute)
     
     def seconds_from_midnight(self):
-        print(self.time_objects)
         seconds = self.time_objects.dropna().apply(lambda time_obj: time_obj.hour * 3600 + time_obj.minute * 60)
         return seconds
     
     
-class Years(Time):
+class Date(Time):
     """
         2022/01/01
     """
     @staticmethod
     def process_string(timestr):
-        date_units = [int(date_unit) for date_unit in timestr.split("-")]
-        return date(*date_units)
+        if type(timestr) == str:
+            date_units = [int(date_unit) for date_unit in timestr.split("-")]
+            return date(*date_units)
+        return timestr
     
     
     def days_from_first(self):
@@ -62,5 +63,8 @@ class DateTime(Time):
         re_time = re.match(settlementdate_format, timestr)
         time_object = datetime(*[int(time_unit) for time_unit in re_time.groups()])
         return time_object
+    
+    def convert_to_year(self):
+        return self.time_objects.apply(lambda time_obj: date(time_obj.year, time_obj.month, time_obj.day))
         
         

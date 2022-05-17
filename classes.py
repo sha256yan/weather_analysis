@@ -59,39 +59,3 @@ class Direction(pd.Series):
 
     
 
-    
-
-class Time(pd.Series):
-    
-    @staticmethod
-    def HM_to_seconds(time):
-        """
-            Returns seconds after midnight for an individual 
-            time string of the form "hh:mm".
-        """
-        times = time.split(":")
-        hour = int(times[0])
-        minute = int(times[1])
-        seconds_after_midnight = 60 * (hour * 60  + minute)
-        return seconds_after_midnight
-    
-    
-    def sec_after_midnight(self):
-        """
-            Converts a series with values of the form 'hh:mm' to 
-            seconds after midnight aka '00:00' for each time value.
-        """
-        return self.dropna().apply(lambda timestr: self.HM_to_seconds(timestr))
-    
-    def days_after_min(self):
-        """
-            Takes a series containing strings in the form "2022-03-22"
-            and returns an array of integers representing number of days since
-            the earliest date in the series.
-            i.e. if the earliest date in the series is 2022-03-22, the position
-            in the time-difference array corresponding to 2022-03-26 will be 4 
-            since 03-26 is 4 days after the earliest date, 03-22.
-        """
-        datetimes = self.apply(lambda time_string: self.datetime_from_str(time_string))
-        time_differences = datetimes.apply(lambda dtime: (dtime - datetimes[0]).days)
-        return time_differences
