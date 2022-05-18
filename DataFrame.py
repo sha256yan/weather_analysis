@@ -1,6 +1,10 @@
 from Time import Hours, Date, DateTime
 from Series import Speed, Direction
+
+import math
 import pandas as pd
+from datetime import timedelta
+
 
 WEATHER_DIR = "./weather/"
 
@@ -119,6 +123,27 @@ class Cities(DataFrame):
     def join_price(self, grouped_price_demand):
         #returns a new df which is the join of cities and price demand
         return self.join(grouped_price_demand, on=["REGION", "Date"], how='right')
+    
+    
+    
+    def nan_processor(self, nan_region, nan_date, column):
+    
+        region = self.loc[self["REGION"] == nan_region]
+        lower_bound = nan_date - timedelta(days=10)
+        upper_bound = nan_date + timedelta(days=10)
+        fill_value = region.loc[(region["Date"] > lower_bound) & (region["Date"] < upper_bound)][column].mean()
+
+        if(math.isnan(fill_value)):
+            fill_value = self.loc[(self["Date"] > lower_bound) & (self["Date"] < upper_bound)][column].mean()
+        return fill_value
+
+    
+    def fill_nans(self, cols):
+        for col in cols:
+            nans = self.loc[self[col].isna()][["REGION", "Date"]]
+            nans_filled = nans.transpose().apply(lambda region_and_date: self.nan_processor(*region_and_date, col))
+            if nans_filled.index.size > 2:
+                self.loc[nans_filled.index, col] = nans_filled
 
     
     
