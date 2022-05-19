@@ -90,7 +90,32 @@ class City(DataFrame):
     
 
     
-class Cities(DataFrame):
+class Cities():
+    def __init__(self):
+        self.df = CitiesDataFrame()
+        self.fake_values = pd.Series(dtype='object')
+    
+    def mean_fill_nans(self, columns):
+        current_fakes = self.df.fill_nans(columns)
+        self.fake_values = pd.concat([self.fake_values, *current_fakes])
+        
+    def fake_indexes(self, column):
+        fake_value_indexes = self.fake_values.loc[self.fake_values == column].index
+        return fake_value_indexes
+    
+    def get_fake_values(self, column):
+        fake_value_indexes = self.fake_indexes(column)
+        return self.df.loc[fake_value_indexes][column]
+    
+    def get_real_values(self, column):
+        fake_value_indexes = self.fake_indexes(column)
+        return self.df.drop(fake_value_indexes)[column]
+        
+        
+        
+        
+
+class CitiesDataFrame(DataFrame):
     """
         Container all of the cities' weather data.
     """
@@ -111,9 +136,8 @@ class Cities(DataFrame):
         return cities
     
     
-    @staticmethod
-    def process_df(*args):
-        cities_dataframes = Cities.get_all_cities()
+    def process_df(self, *args):
+        cities_dataframes = CitiesDataFrame.get_all_cities()
         City_array = [City(*city) for city in cities_dataframes]
         Cities_dataframe = pd.concat(City_array, axis=0).reset_index()
         return Cities_dataframe
@@ -139,12 +163,16 @@ class Cities(DataFrame):
 
     
     def fill_nans(self, cols):
+        current_fakes = []
         for col in cols:
             nans = self.loc[self[col].isna()][["REGION", "Date"]]
             nans_filled = nans.transpose().apply(lambda region_and_date: self.nan_processor(*region_and_date, col))
-            if nans_filled.index.size > 2:
-                self.loc[nans_filled.index, col] = nans_filled
 
+
+            if nans_filled.index.size > 2:
+                current_fakes.append(pd.Series(data=col, index=nans_filled.index))
+                self.loc[nans_filled.index, col] = nans_filled
+        return current_fakes
     
     
     
