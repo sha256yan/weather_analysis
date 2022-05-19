@@ -33,7 +33,7 @@ class PriceDemand(DataFrame):
     def process_df(*args):
         price_demand = pd.read_csv(WEATHER_DIR + 'price_demand_data.csv')
         datetime_settlements = DateTime(price_demand["SETTLEMENTDATE"])
-        price_demand["SETTLEMENTDATE"] = datetime_settlements.time_objects
+        price_demand["SETTLEMENTDATE"] = datetime_settlements#.time_objects
         year_dates = datetime_settlements.convert_to_year()
         price_demand["Date"] = year_dates
         return price_demand
@@ -72,7 +72,7 @@ class City(DataFrame):
         
         #adds a REGION column with the state code and replaces the Date col with desired datetime obj column
         city_df["REGION"] = state_code
-        city_df["Date"] = Date(city_df["Date"]).time_objects
+        #city_df["Date"] = Date(city_df["Date"]).time_objects
         city_df["Time of maximum wind gust"] = Hours(city_df["Time of maximum wind gust"]).seconds_from_midnight()
         
         #changes speed and direction columns to form specified in wrapper classes
@@ -91,34 +91,6 @@ class City(DataFrame):
 
     
 class Cities():
-    def __init__(self):
-        self.df = CitiesDataFrame()
-        self.fake_values = pd.Series(dtype='object')
-    
-    def mean_fill_nans(self, columns):
-        current_fakes = self.df.fill_nans(columns)
-        self.fake_values = pd.concat([self.fake_values, *current_fakes])
-        
-    def fake_indexes(self, column):
-        fake_value_indexes = self.fake_values.loc[self.fake_values == column].index
-        return fake_value_indexes
-    
-    def get_fake_values(self, column):
-        fake_value_indexes = self.fake_indexes(column)
-        return self.df.loc[fake_value_indexes][column]
-    
-    def get_real_values(self, column):
-        fake_value_indexes = self.fake_indexes(column)
-        return self.df.drop(fake_value_indexes)[column]
-        
-        
-        
-        
-
-class CitiesDataFrame(DataFrame):
-    """
-        Container all of the cities' weather data.
-    """
     
     @staticmethod
     def get_all_cities():
@@ -136,37 +108,88 @@ class CitiesDataFrame(DataFrame):
         return cities
     
     
+    def __init__(self):
+        cities_dfs = self.get_all_cities()
+        self.df = CitiesDataFrame(cities_dfs)
+        self.fake_values = pd.Series(dtype='object')
+        self.date = Date(self.df["Date"])
+        self.columns = self.df.columns
+    
+    def mean_fill_nans(self, columns):
+        current_fakes = self.df.fill_nans(columns, self.date)
+        self.fake_values = pd.concat([self.fake_values, *current_fakes])
+        
+    def fake_indexes(self, column):
+        fake_value_indexes = self.fake_values.loc[self.fake_values == column].index
+        return fake_value_indexes
+    
+    def get_fake_values(self, column):
+        fake_value_indexes = self.fake_indexes(column)
+        return self.df.loc[fake_value_indexes][column]
+    
+    def get_real_values(self, column):
+        fake_value_indexes = self.fake_indexes(column)
+        return self.df.drop(fake_value_indexes)[column]
+    
+    def get_days_from_first(self):
+        return self.date.days_from_first()
+    
+    def get_first_day(self):
+        return self.date[0]
+
+    def join_price(self, grouped_price_demand):
+        #returns a new df which is the join of cities and price demand
+        return self.df.join(grouped_price_demand, on=["REGION", "Date"], how='right')
+    
+
+        
+
+        
+        
+        
+ 
+        
+class CitiesDataFrame(DataFrame):
+    """
+        Container all of the cities' weather data.
+    """
+    
+    
+    
     def process_df(self, *args):
-        cities_dataframes = CitiesDataFrame.get_all_cities()
+        cities_dataframes = args[0]
         City_array = [City(*city) for city in cities_dataframes]
         Cities_dataframe = pd.concat(City_array, axis=0).reset_index()
         return Cities_dataframe
     
+    
+    
 
+    
+    def nan_processor(self, nan_region, nan_date, column, date):
+    
+        date_objects = date.time_objects
+        is_in_region = self["REGION"] == nan_region
+        nan_date_object = Date.process_string(nan_date)
 
-    def join_price(self, grouped_price_demand):
-        #returns a new df which is the join of cities and price demand
-        return self.join(grouped_price_demand, on=["REGION", "Date"], how='right')
-    
-    
-    
-    def nan_processor(self, nan_region, nan_date, column):
-    
-        region = self.loc[self["REGION"] == nan_region]
-        lower_bound = nan_date - timedelta(days=10)
-        upper_bound = nan_date + timedelta(days=10)
-        fill_value = region.loc[(region["Date"] > lower_bound) & (region["Date"] < upper_bound)][column].mean()
+        lower_bound = nan_date_object - timedelta(days=10)
+        upper_bound = nan_date_object + timedelta(days=10)
+
+        date_is_close = (date_objects > lower_bound) & (date_objects < upper_bound)
+        fill_value = self.loc[date_is_close & is_in_region][column].mean()
 
         if(math.isnan(fill_value)):
-            fill_value = self.loc[(self["Date"] > lower_bound) & (self["Date"] < upper_bound)][column].mean()
+            fill_value = self.loc[date_is_close][column].mean()
         return fill_value
 
     
-    def fill_nans(self, cols):
+    
+    
+    def fill_nans(self, cols, date):
         current_fakes = []
         for col in cols:
             nans = self.loc[self[col].isna()][["REGION", "Date"]]
-            nans_filled = nans.transpose().apply(lambda region_and_date: self.nan_processor(*region_and_date, col))
+            nans_filled = nans.transpose().apply(lambda region_and_date: self.nan_processor(*region_and_date, col, date))
 
 
             if nans_filled.index.size > 2:
